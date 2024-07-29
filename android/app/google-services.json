@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "870293495241",
+    "project_id": "f-lc-tracker",
+    "storage_bucket": "f-lc-tracker.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:870293495241:android:58b5563104d790507cdc18",
+        "android_client_info": {
+          "package_name": "com.f_lc_tracker.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAa5MM_0mMcoNuvtlGUxNQY4pszBRS5t5w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
