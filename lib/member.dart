@@ -1,8 +1,10 @@
+import 'package:f_lc_tracker/firestore.dart';
+import 'package:f_lc_tracker/pin_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MemberWidget extends StatefulWidget {
-  final Map<String, String> members;
-  const MemberWidget({super.key, required this.members});
+  const MemberWidget({super.key});
 
   @override
   State<MemberWidget> createState() => _MemberWidgetState();
@@ -12,18 +14,25 @@ class _MemberWidgetState extends State<MemberWidget> {
   late final TextEditingController _memberController;
   late final TextEditingController _aliasNameController;
   late Map<String, String> _members;
+  late Future<void> _fetchMembersFuture;
+
+  final FirestoreService firestoreService = FirestoreService();
 
   @override
   void initState() {
     super.initState();
     _memberController = TextEditingController();
     _aliasNameController = TextEditingController();
-    _members = widget.members;
+    _fetchMembersFuture = fetchMembers();
 
     // Update aliasNameController whenever memberController changes
     _memberController.addListener(() {
       _aliasNameController.text = _memberController.text;
     });
+  }
+
+  Future<void> fetchMembers() async {
+    _members = await firestoreService.fetchMembers('active');
   }
 
   void _addMember() {
@@ -49,12 +58,26 @@ class _MemberWidgetState extends State<MemberWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return MemberTab(
-      memberController: _memberController,
-      aliasNameController: _aliasNameController,
-      members: _members,
-      addMember: _addMember,
-      deleteMember: _deleteMember,
+    return FutureBuilder<void>(
+      future: _fetchMembersFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done) {
+          if (snapshot.hasError) {
+            return Center(
+                child: Text('Error loading members: ${snapshot.error}'));
+          } else {
+            return MemberTab(
+              memberController: _memberController,
+              aliasNameController: _aliasNameController,
+              members: _members,
+              addMember: _addMember,
+              deleteMember: _deleteMember,
+            );
+          }
+        } else {
+          return const Center(child: CircularProgressIndicator());
+        }
+      },
     );
   }
 }
@@ -65,8 +88,9 @@ class MemberTab extends StatelessWidget {
   final Map<String, String> members;
   final VoidCallback addMember;
   final Function(String) deleteMember;
+  final FirestoreService firestoreService = FirestoreService();
 
-  const MemberTab({
+  MemberTab({
     required this.memberController,
     required this.aliasNameController,
     required this.members,
@@ -100,7 +124,17 @@ class MemberTab extends StatelessWidget {
           ),
         ),
         ElevatedButton(
-          onPressed: addMember,
+          onPressed: () async {
+            bool proceed = await showPinDialog(context, firestoreService);
+            if (!proceed) {
+              return;
+            }
+            bool success = await firestoreService.addMember(
+                memberController.text, aliasNameController.text);
+            if (success) {
+              addMember();
+            }
+          },
           child: const Text('Add Member'),
         ),
         Expanded(
@@ -113,9 +147,19 @@ class MemberTab extends StatelessWidget {
                 title: Text(aliasName),
                 subtitle: Text(member),
                 trailing: IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: () => deleteMember(member),
-                ),
+                    icon: const Icon(Icons.delete),
+                    onPressed: () async {
+                      bool proceed =
+                          await showPinDialog(context, firestoreService);
+                      if (!proceed) {
+                        return;
+                      }
+                      final success =
+                          await firestoreService.deleteMember(member);
+                      if (success) {
+                        deleteMember(member);
+                      }
+                    }),
               );
             },
           ),
